@@ -17,65 +17,63 @@ import java.io.IOException;
 import jenkins.tasks.SimpleBuildStep;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundSetter;
+import java.util.UUID;
 
 public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
+  // Image UUID.
+  private final String imageUuid;
 
-    private final String name;
-    private boolean useFrench;
+  // VM Name.
+  private final String vmName;
 
-    @DataBoundConstructor
-    public HelloWorldBuilder(String name) {
-        this.name = name;
-    }
+  // This field is selected from a drop-down, so the string can be only of
+  // certain values. Like a enum.
+  private final String vmOp;
 
-    public String getName() {
-        return name;
-    }
+  @DataBoundConstructor
+  public HelloWorldBuilder(String imageUuid, String vmName, String vmOp) {
+    this.imageUuid = imageUuid;
+    this.vmName = vmName;
+    this.vmOp = vmOp;
+  }
 
-    public boolean isUseFrench() {
-        return useFrench;
-    }
+  @Override
+  public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
+    // Make API call.
+  }
 
-    @DataBoundSetter
-    public void setUseFrench(boolean useFrench) {
-        this.useFrench = useFrench;
+  @Symbol("greet")
+  @Extension
+  public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+
+    public FormValidation doCheckImageUuid(
+      @QueryParameter String imageUuid,
+      @QueryParameter String vmName,
+      @QueryParameter String vmOp)
+      throws IOException, ServletException {
+
+      if (vmName.isEmpty()) {
+        return FormValidation.error(Messages.HelloWorldBuilder_DescriptorImpl_errors_missingVmName());
+      }
+      if (vmOp.isEmpty()) {
+        return FormValidation.error(Messages.HelloWorldBuilder_DescriptorImpl_errors_missingVmOp());
+      }
+      if (vmOp.equals("create") && imageUuid.isEmpty()) {
+        // TODO: check that 'imageUuid' is a valid UUID.
+        return FormValidation.error(Messages.HelloWorldBuilder_DescriptorImpl_errors_missingImageUuid());
+      }
+
+      return FormValidation.ok();
     }
 
     @Override
-    public void perform(Run<?, ?> run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
-        if (useFrench) {
-            listener.getLogger().println("Bonjour, " + name + "!");
-        } else {
-            listener.getLogger().println("Hello, " + name + "!");
-        }
+    public boolean isApplicable(Class<? extends AbstractProject> aClass) {
+      return true;
     }
 
-    @Symbol("greet")
-    @Extension
-    public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
-
-        public FormValidation doCheckName(@QueryParameter String value, @QueryParameter boolean useFrench)
-                throws IOException, ServletException {
-            if (value.length() == 0)
-                return FormValidation.error(Messages.HelloWorldBuilder_DescriptorImpl_errors_missingName());
-            if (value.length() < 4)
-                return FormValidation.warning(Messages.HelloWorldBuilder_DescriptorImpl_warnings_tooShort());
-            if (!useFrench && value.matches(".*[éáàç].*")) {
-                return FormValidation.warning(Messages.HelloWorldBuilder_DescriptorImpl_warnings_reallyFrench());
-            }
-            return FormValidation.ok();
-        }
-
-        @Override
-        public boolean isApplicable(Class<? extends AbstractProject> aClass) {
-            return true;
-        }
-
-        @Override
-        public String getDisplayName() {
-            return Messages.HelloWorldBuilder_DescriptorImpl_DisplayName();
-        }
-
+    @Override
+    public String getDisplayName() {
+      return "Create/power on/delete VM";
     }
-
+  }
 }
